@@ -71,6 +71,29 @@ def test_required_frontend_pages_render_their_page_specific_content():
         assert f"<h1>{heading}</h1>" in response.text
 
 
+def test_frontend_ticket_form_creates_ticket_and_redirects_to_detail():
+    c = client()
+
+    response = c.post(
+        "/tickets/new",
+        data={
+            "title": "Cannot access virtual campus",
+            "description": "The student cannot access the virtual campus with current credentials.",
+            "category": "Access",
+            "priority": "High",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    location = response.headers.get("location")
+    assert location is not None
+    assert location.startswith("/tickets/")
+    detail = c.get(location)
+    assert detail.status_code == 200
+    assert "Cannot access virtual campus" in detail.text
+
+
 def test_dashboard_catalogs_and_web_pages():
     c = client()
     admin = login(c, "admin@example.com", "admin123")
@@ -78,7 +101,7 @@ def test_dashboard_catalogs_and_web_pages():
     assert "status" in c.get("/api/dashboard", headers=admin).json()
     for path in ["/login", "/", "/tickets", "/tickets/new", "/knowledge-base"]:
         response = c.get(path, follow_redirects=False)
-        assert response.status_code in (200, 303)
+        assert response.status_code in {200, 303}
         if response.status_code == 200:
             assert "HelpDesk EDU" in response.text
 
@@ -174,7 +197,7 @@ def test_local_assistance_returns_deterministic_known_network_hint():
     response = c.post("/api/assistance", headers=requester, json={"title": "Network outage", "description": "Students report that Wi-Fi cannot connect.", "category": "Network"})
 
     assert response.status_code == 200
-    assert response.json()["matched"] is True
+    assert response.json()["matched"]
     assert "network" in response.json()["suggestions"][0]["hint"].lower()
     assert "human review" in response.json()["disclaimer"].lower()
 
@@ -186,7 +209,7 @@ def test_local_assistance_returns_safe_no_match_result():
     response = c.post("/api/assistance", headers=requester, json={"title": "Unusual classroom event", "description": "A completely novel situation.", "category": "Other"})
 
     assert response.status_code == 200
-    assert response.json()["matched"] is False
+    assert not response.json()["matched"]
     assert response.json()["suggestions"] == []
 
 

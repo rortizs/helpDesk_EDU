@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Env/secrets
+.env
+.env.*
+!.env.example
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# AI / agent / SDD internal artifacts
+openspec/
+.sdd/
+.atl/
+.pi/
+.hermes/
+.agent/
+.agents/
+artifacts/
+.tmp/
+.codegraph/
+*.log
+hermes-*.md
+
+# Build/runtime
+dist/
+build/
+*.egg-info/
+*.sqlite3
+*.db

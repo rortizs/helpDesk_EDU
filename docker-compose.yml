@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://helpdesk:helpdesk@db:5432/helpdesk
+      JWT_SECRET: ${JWT_SECRET:-development-only-change-this}
+    depends_on: [db]
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: helpdesk
+      POSTGRES_USER: helpdesk
+      POSTGRES_PASSWORD: helpdesk
+    volumes: [postgres_data:/var/lib/postgresql/data]
+volumes:
+  postgres_data:

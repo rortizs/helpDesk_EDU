@@ -35,3 +35,8 @@ def ticket_page(ticket_id: int, request: Request):
 @router.get("/knowledge-base", response_class=HTMLResponse)
 def kb_page(request: Request):
     return templates.TemplateResponse(request, "knowledge_base.html", {"title": "Knowledge base"})
+
+
+@router.get("/notifications", response_class=HTMLResponse)
+def notifications_page(request: Request):
+    return templates.TemplateResponse(request, "notifications.html", {"title": "Notifications"})

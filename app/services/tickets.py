@@ -8,6 +8,7 @@ from app.models.enums import STATUSES
 from app.repositories.tickets import TicketRepository
 from app.repositories.users import UserRepository
 from app.schemas.tickets import AssignIn, CommentIn, StatusIn, TicketIn
+from app.services.notifications import NotificationService
 
 
 class TicketService:
@@ -15,6 +16,7 @@ class TicketService:
         self.db = db
         self.tickets = TicketRepository(db)
         self.users = UserRepository(db)
+        self.notifications = NotificationService(db)
 
     def serialize(self, ticket: Ticket) -> dict:
         comments = [{"id": item.id, "body": item.body, "author": item.author.name, "created_at": item.created_at} for item in self.tickets.comments_for(ticket.id)]
@@ -47,6 +49,13 @@ class TicketService:
         requester_id = user.id if user.role == "requester" else None
         return {"items": [self.serialize(ticket) for ticket in self.tickets.list(requester_id=requester_id, status=status_filter, category=category, priority=priority)]}
 
+    def my_tickets(self, user: User) -> dict:
+        if user.role == "requester":
+            tickets = self.tickets.list(requester_id=user.id)
+        else:
+            tickets = self.tickets.list(assignee_id=user.id)
+        return {"items": [self.serialize(ticket) for ticket in tickets]}
+
     def detail(self, ticket_id: int, user: User) -> dict:
         ticket = self._ticket(ticket_id)
         self._assert_owner(ticket, user)
@@ -78,6 +87,7 @@ class TicketService:
         ticket.assignee_id = assignee.id
         self.tickets.commit()
         self._event(ticket, user, "assigned", f"Assigned to {assignee.name}")
+        self.notifications.create(assignee.id, ticket, "Ticket assigned", f"You were assigned ticket #{ticket.id}: {ticket.title}", "assignment")
         return self.serialize(ticket)
 
     def change_status(self, ticket_id: int, body: StatusIn, user: User) -> dict:
@@ -87,6 +97,7 @@ class TicketService:
         ticket.status = body.status
         self.tickets.commit()
         self._event(ticket, user, "status_changed", body.status)
+        self.notifications.notify_participants(ticket, user, "Ticket status changed", f"Ticket #{ticket.id} is now {body.status}.", "status_changed")
         return self.serialize(ticket)
 
     def cancel(self, ticket_id: int, user: User) -> dict:
@@ -102,6 +113,7 @@ class TicketService:
         ticket.status = "Closed"
         self.tickets.commit()
         self._event(ticket, user, "closed", "Ticket closed")
+        self.notifications.notify_participants(ticket, user, "Ticket closed", f"Ticket #{ticket.id} has been closed.", "closed")
         return self.serialize(ticket)
 
     def comment(self, ticket_id: int, body: CommentIn, user: User) -> dict:
@@ -111,6 +123,7 @@ class TicketService:
         self.db.add(comment)
         self.db.commit()
         self._event(ticket, user, "commented", "Comment added")
+        self.notifications.notify_participants(ticket, user, "New ticket comment", f"A new comment was added to ticket #{ticket.id}.", "comment")
         return {"id": comment.id, "body": comment.body}
 
     def dashboard(self, user: User) -> dict:

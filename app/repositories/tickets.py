@@ -13,10 +13,12 @@ class TicketRepository:
     def by_id(self, ticket_id: int) -> Ticket | None:
         return self.db.get(Ticket, ticket_id)
 
-    def list(self, *, requester_id: int | None = None, status: str | None = None, category: str | None = None, priority: str | None = None) -> list[Ticket]:
+    def list(self, *, requester_id: int | None = None, assignee_id: int | None = None, status: str | None = None, category: str | None = None, priority: str | None = None) -> list[Ticket]:
         query = select(Ticket)
         if requester_id is not None:
             query = query.where(Ticket.requester_id == requester_id)
+        if assignee_id is not None:
+            query = query.where(Ticket.assignee_id == assignee_id)
         if status:
             query = query.where(Ticket.status == status)
         if category:

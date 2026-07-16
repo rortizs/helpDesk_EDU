@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}
+<h1>HelpDesk EDU Notifications</h1>
+<p>Use the authenticated <code>GET /api/notifications</code> endpoint to view in-app notifications and its unread count. Mark an owned notification read with <code>POST /api/notifications/{id}/read</code>.</p>
+<section aria-label="Unread notifications"><h2>Unread notifications</h2><p>The API returns only the signed-in user's notifications.</p></section>
+{% endblock %}

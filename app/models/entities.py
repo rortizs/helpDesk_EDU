@@ -57,6 +57,21 @@ class History(Base):
     actor: Mapped[User] = relationship(User)
 
 
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    ticket_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id"), nullable=True)
+    title: Mapped[str] = mapped_column(String(160))
+    message: Mapped[str] = mapped_column(Text)
+    channel: Mapped[str] = mapped_column(String(30), default="in_app")
+    type: Mapped[str] = mapped_column(String(50))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    user: Mapped[User] = relationship(User)
+
+
 class Article(Base):
     __tablename__ = "articles"
 

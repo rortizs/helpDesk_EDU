@@ -1,7 +1,7 @@
 """FastAPI composition root: construct infrastructure and register adapters."""
 from fastapi import FastAPI
 
-from app.api.routes import auth, knowledge_base, system, tickets, users
+from app.api.routes import assistance, auth, knowledge_base, mobile, notifications, system, tickets, users
 from app.core.config import settings
 from app.core.database import create_session_factory
 from app.services.auth import seed_users
@@ -15,7 +15,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     with app.state.session_factory() as db:
         seed_users(db)
 
-    for router in (system.router, auth.router, users.router, tickets.router, knowledge_base.router, web_routes.router):
+    for router in (system.router, auth.router, users.router, tickets.router, notifications.router, mobile.router, assistance.router, knowledge_base.router, web_routes.router):
         app.include_router(router)
     return app
 

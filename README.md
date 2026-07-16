@@ -1,6 +1,6 @@
 # HelpDesk EDU – Technical Support Management System
 
-HelpDesk EDU is a complete, teachable semester-final project for a Spanish-speaking Programming II course. It evolves the weeks 1–8 in-memory help desk into a FastAPI application with a JSON API, a Bootstrap/Jinja2 web UI, persistence, authentication, roles, audit history, SLA indicators, and a knowledge base.
+HelpDesk EDU is a complete, teachable semester-final project for a Spanish-speaking Programming II course. It evolves the weeks 1–8 in-memory help desk into a FastAPI application with a JSON API, a Bootstrap/Jinja2 web UI, persistence, authentication, roles, audit history, SLA indicators, a knowledge base, and three demonstrative extension modules.
 
 ## Features and modules
 
@@ -10,7 +10,10 @@ HelpDesk EDU is a complete, teachable semester-final project for a Spanish-speak
 - Catalog values for categories, priorities, and statuses.
 - Knowledge-base article CRUD and search.
 - Dashboard summary by status, priority, category, overdue state, and technician workload.
-- Server-rendered pages for login, dashboard, ticket list/detail/create, and knowledge-base browsing.
+- Server-rendered pages for login, dashboard, ticket list/detail/create, knowledge-base browsing, and notifications.
+- Persistent in-app notifications for assignments, comments, status changes, and ticket closure.
+- JWT-protected compact mobile endpoints under `/api/mobile`.
+- Deterministic local troubleshooting assistance with no external AI/provider calls.
 
 ## Architecture and best practices
 
@@ -21,7 +24,7 @@ This repository intentionally shows a layered MVC adaptation for FastAPI rather 
 | Model | `app/models/` | SQLAlchemy entities and domain enum values. |
 | View | `app/web/templates/`, Pydantic response schemas, Swagger/OpenAPI | HTML for people and documented DTO responses for API consumers. |
 | Controller | `app/api/routes/`, `app/web/routes.py` | HTTP input/output only; controllers delegate business work. |
-| Service | `app/services/` | Ticket lifecycle, SLA, authorization-aware business rules, and history events. |
+| Service | `app/services/` | Ticket lifecycle, notifications, local assistance, SLA, and authorization-aware business rules. |
 | Repository | `app/repositories/` | SQLAlchemy query and persistence operations. |
 | Infrastructure | `app/core/` | Settings, security, dependencies, and request-scoped database session lifecycle. |
 
@@ -70,6 +73,33 @@ Compose starts the FastAPI application on `http://localhost:8000` and PostgreSQL
 
 These credentials are educational seed data only. Replace them and rotate `JWT_SECRET` before any real deployment.
 
+## Demonstrative extension modules
+
+### Notifications
+
+All notification routes require `Authorization: Bearer <token>`:
+
+- `GET /api/notifications` returns only the current user's records and an `unread_count`.
+- `GET /api/notifications/unread-count` returns the compact badge value.
+- `POST /api/notifications/{id}/read` marks an owned notification read; another user's ID is not accessible.
+
+Ticket assignment notifies the assignee. Comments notify other requester/assignee participants; status changes and explicit closure notify non-actor participants. Visit `/notifications` for the Jinja notification section; its API-first design keeps JWT ownership enforcement in the controller/service flow.
+
+### Mobile API
+
+The API-ready mobile surface is compact and preserves the same JWT and ticket access rules as the primary API:
+
+- `GET /api/mobile/me`
+- `GET /api/mobile/tickets`
+- `GET /api/mobile/tickets/{ticket_id}`
+- `POST /api/mobile/tickets`
+
+Requesters see only their own tickets. Staff retain normal ticket access. Mobile creates use the same `TicketService`, so SLA due dates and audit history behave identically to web/API ticket creation.
+
+### Local assistance safety
+
+`POST /api/assistance` accepts a ticket-like `{title, description, category}` payload and returns deterministic network, hardware, or software hints when known keywords match. It has no external model call, no provider credentials, no network transmission, and returns an explicit human-review disclaimer. The ticket detail page includes a **Local assistance suggestions** section. Hints are educational troubleshooting prompts, not automated actions or authoritative diagnoses.
+
 ## Tests
 
 ```bash
@@ -78,7 +108,7 @@ uv run python -c 'from app.main import app; print(app.title)'
 docker compose config
 ```
 
-Tests exercise health, JWT login, a role restriction, ticket create/list/detail flow, assignment/comment/status/history and explicit close flow, dashboard summary, and HTML responses for login, dashboard, and ticket-list pages.
+Tests exercise health, JWT login, role restrictions, ticket lifecycle/history, persistent notification ownership and unread state, authenticated mobile summary/list behavior, deterministic local assistance matching, and key Jinja pages.
 
 ## Example API flow
 
@@ -86,12 +116,7 @@ Tests exercise health, JWT login, a role restriction, ticket create/list/detail 
 2. Send the returned token as `Authorization: Bearer <token>`.
 3. `POST /api/tickets` with title, description, category, and priority.
 4. A technician calls `PATCH /api/tickets/{id}/assign`, then `POST /api/tickets/{id}/comments` or `PATCH /api/tickets/{id}/status`.
-5. Inspect `GET /api/tickets/{id}/history`, close with `POST /api/tickets/{id}/close`, and review `GET /api/dashboard`.
+5. Inspect `GET /api/notifications`, `GET /api/tickets/{id}/history`, close with `POST /api/tickets/{id}/close`, and review `GET /api/dashboard`.
+6. A mobile client can call `/api/mobile/me` and `/api/mobile/tickets` with the same token; an authenticated client can request a local hint from `/api/assistance`.
 
 Low, Medium, High, and Critical tickets receive 72h, 48h, 24h, and 4h SLA targets respectively. Open tickets past their due date count as overdue.
-
-## Student extension modules (intentionally not implemented)
-
-- Notifications: email, in-app, or Observer-pattern delivery with delivery failure handling.
-- Mobile integration: a mobile client consuming the documented API.
-- AI-assisted suggestions: knowledge-base recommendations with explicit privacy, evaluation, and human-review safeguards.

@@ -65,10 +65,41 @@ def test_role_restriction_and_ticket_lifecycle():
 def test_required_frontend_pages_render_their_page_specific_content():
     c = client()
 
-    for path, heading in [("/login", "HelpDesk EDU login"), ("/", "HelpDesk EDU Dashboard"), ("/tickets", "HelpDesk EDU Tickets")]:
+    for path, content in [("/login", "HelpDesk EDU login"), ("/", "Support for every learning moment"), ("/tickets", "HelpDesk EDU Tickets")]:
         response = c.get(path)
         assert response.status_code == 200
-        assert f"<h1>{heading}</h1>" in response.text
+        assert content in response.text
+
+
+def test_public_landing_invites_customers_to_enter_the_portal():
+    c = client()
+
+    response = c.get("/")
+
+    assert response.status_code == 200
+    assert "Support for every learning moment" in response.text
+    assert 'href="/portal"' in response.text
+    assert "bootstrap@5" in response.text
+
+
+def test_customer_portal_requires_a_requester_session_and_tracks_that_requesters_ticket():
+    c = client()
+
+    unauthenticated = c.get("/portal", follow_redirects=False)
+    assert unauthenticated.status_code == 303
+    assert unauthenticated.headers["location"] == "/login"
+
+    assert c.post("/login", data={"email": "requester@example.com", "password": "requester123"}, follow_redirects=False).status_code == 303
+    created = c.post(
+        "/portal/tickets/new",
+        data={"title": "Portal-owned request", "description": "Created by the signed-in customer.", "category": "Access", "priority": "High"},
+        follow_redirects=False,
+    )
+
+    assert created.status_code == 303
+    assert created.headers["location"].startswith("/portal/tickets/")
+    assert "Portal-owned request" in c.get(created.headers["location"]).text
+    assert "Portal-owned request" in c.get("/portal/tickets").text
 
 
 def test_frontend_ticket_form_creates_ticket_and_redirects_to_detail():

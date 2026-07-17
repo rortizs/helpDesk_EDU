@@ -25,6 +25,15 @@ def _current_web_user(request: Request):
         return UserRepository(db).by_email(email)
 
 
+def _customer_or_login(request: Request):
+    user = _current_web_user(request)
+    if user is None:
+        return None
+    if user.role != "requester":
+        raise HTTPException(status_code=403, detail="The customer portal is only available to requesters")
+    return user
+
+
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse(request, "login.html", {"title": "Login", "error": None})
@@ -44,7 +53,61 @@ def login_submit(request: Request, email: str = Form(...), password: str = Form(
 
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse(request, "dashboard.html", {"title": "Dashboard", "user": _current_web_user(request)})
+    return templates.TemplateResponse(request, "dashboard.html", {"title": "HelpDesk EDU", "user": _current_web_user(request)})
+
+
+@router.get("/portal", response_class=HTMLResponse)
+def customer_portal(request: Request):
+    user = _customer_or_login(request)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    with request.app.state.session_factory() as db:
+        tickets = TicketService(db).list(user, None, None, None)["items"]
+    return templates.TemplateResponse(request, "portal.html", {"title": "Customer portal", "user": user, "tickets": tickets})
+
+
+@router.get("/portal/tickets", response_class=HTMLResponse)
+def customer_tickets(request: Request):
+    user = _customer_or_login(request)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    with request.app.state.session_factory() as db:
+        tickets = TicketService(db).list(user, None, None, None)["items"]
+    return templates.TemplateResponse(request, "portal_tickets.html", {"title": "My tickets", "user": user, "tickets": tickets})
+
+
+@router.get("/portal/tickets/new", response_class=HTMLResponse)
+def customer_ticket_new(request: Request):
+    user = _customer_or_login(request)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "portal_ticket_form.html", {"title": "Open a ticket", "user": user})
+
+
+@router.post("/portal/tickets/new")
+def customer_ticket_create(
+    request: Request,
+    title: str = Form(...),
+    description: str = Form(...),
+    category: str = Form("General"),
+    priority: str = Form("Medium"),
+):
+    user = _customer_or_login(request)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    with request.app.state.session_factory() as db:
+        ticket = TicketService(db).create(TicketIn(title=title, description=description, category=category, priority=priority), user)
+    return RedirectResponse(url=f"/portal/tickets/{ticket['id']}", status_code=303)
+
+
+@router.get("/portal/tickets/{ticket_id}", response_class=HTMLResponse)
+def customer_ticket_detail(ticket_id: int, request: Request):
+    user = _customer_or_login(request)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    with request.app.state.session_factory() as db:
+        ticket = TicketService(db).detail(ticket_id, user)
+    return templates.TemplateResponse(request, "ticket_detail.html", {"title": "Ticket detail", "ticket_id": ticket_id, "ticket": ticket, "user": user, "portal": True})
 
 
 @router.get("/tickets", response_class=HTMLResponse)

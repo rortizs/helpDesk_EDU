@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+  <div>
+    <p class="text-primary fw-semibold text-uppercase small mb-1">Customer portal</p>
+    <h1 class="mb-1">Welcome, {{ user.name }}</h1>
+    <p class="text-secondary mb-0">Open a request or check the support work already underway.</p>
+  </div>
+  <a class="btn btn-primary" href="/portal/tickets/new">Open a ticket</a>
+</section>
+<section class="card border-0 shadow-sm">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="h4 mb-0">Your recent tickets</h2>
+      <a href="/portal/tickets">View all</a>
+    </div>
+    {% if tickets %}
+      <div class="list-group list-group-flush">
+      {% for ticket in tickets[:5] %}
+        <a class="list-group-item list-group-item-action px-0" href="/portal/tickets/{{ ticket.id }}">
+          <div class="d-flex justify-content-between gap-3"><strong>#{{ ticket.id }} · {{ ticket.title }}</strong><span class="badge text-bg-light">{{ ticket.status }}</span></div>
+          <small class="text-secondary">{{ ticket.category }} · {{ ticket.priority }} priority</small>
+        </a>
+      {% endfor %}
+      </div>
+    {% else %}
+      <p class="mb-0 text-secondary">You have not opened any tickets yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

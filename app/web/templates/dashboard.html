@@ -1,15 +1,23 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>HelpDesk EDU Dashboard</h1>
-<p>Track ticket status, priorities, SLA alerts, categories, and technician workload.</p>
-{% if user %}
-<div class="alert alert-success">
-  Signed in as {{ user.name }} <span class="badge bg-primary">{{ user.role }}</span>
-</div>
-<p>Use the navigation to create tickets, review notifications, and explore the knowledge base.</p>
-{% else %}
-<div class="alert alert-info">
-  Sign in through the <a href="/login">web login form</a> or use <code>POST /api/auth/login</code> for API clients.
-</div>
-{% endif %}
+<section class="row align-items-center g-5 py-4 py-lg-5">
+  <div class="col-lg-7">
+    <p class="text-primary fw-semibold text-uppercase small mb-2">HelpDesk EDU</p>
+    <h1 class="display-5 fw-bold">Support for every learning moment</h1>
+    <p class="lead text-secondary">Get clear, timely help for classroom technology, access, and learning tools.</p>
+    {% if user %}<p class="small text-secondary">Signed in as {{ user.name }} · {{ user.role }}</p>{% endif %}
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-primary btn-lg" href="/portal">Enter customer portal</a>
+      <a class="btn btn-outline-primary btn-lg" href="/knowledge-base">Browse help articles</a>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card border-0 bg-light shadow-sm">
+      <div class="card-body p-4">
+        <h2 class="h4">How we can help</h2>
+        <p class="mb-0">Open a support request, follow its progress, and keep your learning on track.</p>
+      </div>
+    </div>
+  </div>
+</section>
 {% endblock %}

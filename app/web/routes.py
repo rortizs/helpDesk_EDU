@@ -1,4 +1,4 @@
-"""Server-rendered page adapters; templates and page URLs remain unchanged."""
+"""Server-rendered customer portal and protected staff workspace adapters."""
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -11,6 +11,7 @@ from app.services.tickets import TicketService
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/web/templates")
+STAFF_ROLES = {"technician", "supervisor", "administrator"}
 
 
 def _current_web_user(request: Request):
@@ -34,6 +35,15 @@ def _customer_or_login(request: Request):
     return user
 
 
+def _staff_web_user(request: Request):
+    user = _current_web_user(request)
+    return user if user and user.role in STAFF_ROLES else None
+
+
+def _staff_login_redirect() -> RedirectResponse:
+    return RedirectResponse(url="/login", status_code=303)
+
+
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse(request, "login.html", {"title": "Login", "error": None})
@@ -46,7 +56,8 @@ def login_submit(request: Request, email: str = Form(...), password: str = Form(
         if user is None:
             return templates.TemplateResponse(request, "login.html", {"title": "Login", "error": "Invalid credentials"}, status_code=401)
         token = AuthService(db).token_for(user)["access_token"]
-    response = RedirectResponse(url="/", status_code=303)
+    destination = "/portal" if user.role == "requester" else "/workspace"
+    response = RedirectResponse(url=destination, status_code=303)
     response.set_cookie("helpdesk_token", token, httponly=True, samesite="lax")
     return response
 
@@ -54,6 +65,14 @@ def login_submit(request: Request, email: str = Form(...), password: str = Form(
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse(request, "dashboard.html", {"title": "HelpDesk EDU", "user": _current_web_user(request)})
+
+
+@router.get("/workspace", response_class=HTMLResponse)
+def workspace(request: Request):
+    user = _staff_web_user(request)
+    if user is None:
+        return _staff_login_redirect()
+    return templates.TemplateResponse(request, "workspace.html", {"title": "Operations workspace", "user": user})
 
 
 @router.get("/portal", response_class=HTMLResponse)
@@ -85,13 +104,7 @@ def customer_ticket_new(request: Request):
 
 
 @router.post("/portal/tickets/new")
-def customer_ticket_create(
-    request: Request,
-    title: str = Form(...),
-    description: str = Form(...),
-    category: str = Form("General"),
-    priority: str = Form("Medium"),
-):
+def customer_ticket_create(request: Request, title: str = Form(...), description: str = Form(...), category: str = Form("General"), priority: str = Form("Medium")):
     user = _customer_or_login(request)
     if user is None:
         return RedirectResponse(url="/login", status_code=303)
@@ -112,48 +125,54 @@ def customer_ticket_detail(ticket_id: int, request: Request):
 
 @router.get("/tickets", response_class=HTMLResponse)
 def tickets_page(request: Request):
-    return templates.TemplateResponse(request, "tickets.html", {"title": "Tickets"})
+    user = _staff_web_user(request)
+    if user is None:
+        return _staff_login_redirect()
+    return templates.TemplateResponse(request, "tickets.html", {"title": "Tickets", "user": user})
 
 
 @router.get("/tickets/new", response_class=HTMLResponse)
 def ticket_new(request: Request):
-    return templates.TemplateResponse(request, "ticket_form.html", {"title": "New ticket"})
+    user = _staff_web_user(request)
+    if user is None:
+        return _staff_login_redirect()
+    return templates.TemplateResponse(request, "ticket_form.html", {"title": "New ticket", "user": user})
 
 
 @router.post("/tickets/new")
-def ticket_create(
-    request: Request,
-    title: str = Form(...),
-    description: str = Form(...),
-    category: str = Form("General"),
-    priority: str = Form("Medium"),
-):
+def ticket_create(request: Request, title: str = Form(...), description: str = Form(...), category: str = Form("General"), priority: str = Form("Medium")):
+    user = _staff_web_user(request)
+    if user is None:
+        return _staff_login_redirect()
     with request.app.state.session_factory() as db:
-        requester = UserRepository(db).by_email("requester@example.com")
-        if requester is None:
-            raise HTTPException(status_code=500, detail="Demo requester user is missing")
-        ticket = TicketService(db).create(TicketIn(title=title, description=description, category=category, priority=priority), requester)
+        ticket = TicketService(db).create(TicketIn(title=title, description=description, category=category, priority=priority), user)
     return RedirectResponse(url=f"/tickets/{ticket['id']}", status_code=303)
 
 
 @router.get("/tickets/{ticket_id}", response_class=HTMLResponse)
 def ticket_page(ticket_id: int, request: Request):
-    ticket = None
+    user = _staff_web_user(request)
+    if user is None:
+        return _staff_login_redirect()
     with request.app.state.session_factory() as db:
-        requester = UserRepository(db).by_email("requester@example.com")
-        if requester is not None:
-            try:
-                ticket = TicketService(db).detail(ticket_id, requester)
-            except HTTPException:
-                ticket = None
-    return templates.TemplateResponse(request, "ticket_detail.html", {"title": "Ticket detail", "ticket_id": ticket_id, "ticket": ticket})
+        try:
+            ticket = TicketService(db).detail(ticket_id, user)
+        except HTTPException:
+            ticket = None
+    return templates.TemplateResponse(request, "ticket_detail.html", {"title": "Ticket detail", "ticket_id": ticket_id, "ticket": ticket, "user": user})
 
 
 @router.get("/knowledge-base", response_class=HTMLResponse)
 def kb_page(request: Request):
-    return templates.TemplateResponse(request, "knowledge_base.html", {"title": "Knowledge base"})
+    user = _staff_web_user(request)
+    if user is None:
+        return _staff_login_redirect()
+    return templates.TemplateResponse(request, "knowledge_base.html", {"title": "Knowledge base", "user": user})
 
 
 @router.get("/notifications", response_class=HTMLResponse)
 def notifications_page(request: Request):
-    return templates.TemplateResponse(request, "notifications.html", {"title": "Notifications"})
+    user = _staff_web_user(request)
+    if user is None:
+        return _staff_login_redirect()
+    return templates.TemplateResponse(request, "notifications.html", {"title": "Notifications", "user": user})

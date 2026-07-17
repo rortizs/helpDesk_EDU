@@ -65,7 +65,10 @@ def test_role_restriction_and_ticket_lifecycle():
 def test_required_frontend_pages_render_their_page_specific_content():
     c = client()
 
-    for path, content in [("/login", "HelpDesk EDU login"), ("/", "Support for every learning moment"), ("/tickets", "HelpDesk EDU Tickets")]:
+    assert "HelpDesk EDU login" in c.get("/login").text
+    assert "Support for every learning moment" in c.get("/").text
+    c.post("/login", data={"email": "technician@example.com", "password": "technician123"})
+    for path, content in [("/workspace", "HelpDesk EDU Dashboard"), ("/tickets", "HelpDesk EDU Tickets")]:
         response = c.get(path)
         assert response.status_code == 200
         assert content in response.text
@@ -102,8 +105,35 @@ def test_customer_portal_requires_a_requester_session_and_tracks_that_requesters
     assert "Portal-owned request" in c.get("/portal/tickets").text
 
 
+def test_customer_portal_and_staff_workspace_keep_separate_session_boundaries():
+    c = client()
+
+    requester_login = c.post(
+        "/login",
+        data={"email": "requester@example.com", "password": "requester123"},
+        follow_redirects=False,
+    )
+    assert requester_login.headers["location"] == "/portal"
+    assert c.get("/workspace", follow_redirects=False).headers["location"] == "/login"
+    assert "Customer portal" in c.get("/portal").text
+
+    staff = client()
+    staff_login = staff.post(
+        "/login",
+        data={"email": "technician@example.com", "password": "technician123"},
+        follow_redirects=False,
+    )
+    assert staff_login.headers["location"] == "/workspace"
+    workspace = staff.get("/workspace")
+    assert workspace.status_code == 200
+    assert "AdminLTE" in workspace.text
+    assert "app-sidebar" in workspace.text
+    assert "bootstrap@5" not in workspace.text
+
+
 def test_frontend_ticket_form_creates_ticket_and_redirects_to_detail():
     c = client()
+    c.post("/login", data={"email": "technician@example.com", "password": "technician123"})
 
     response = c.post(
         "/tickets/new",
@@ -135,9 +165,9 @@ def test_frontend_login_sets_cookie_and_dashboard_shows_current_user():
     )
 
     assert response.status_code == 303
-    assert response.headers.get("location") == "/"
+    assert response.headers.get("location") == "/workspace"
     assert "helpdesk_token=" in response.headers.get("set-cookie", "")
-    dashboard = c.get("/")
+    dashboard = c.get("/workspace")
     assert dashboard.status_code == 200
     assert "Signed in as Admin" in dashboard.text
     assert "administrator" in dashboard.text
@@ -264,6 +294,7 @@ def test_local_assistance_returns_safe_no_match_result():
 
 def test_notifications_page_and_ticket_assistance_section_render():
     c = client()
+    c.post("/login", data={"email": "technician@example.com", "password": "technician123"})
 
     assert "HelpDesk EDU Notifications" in c.get("/notifications").text
     assert "Local assistance suggestions" in c.get("/tickets/1").text

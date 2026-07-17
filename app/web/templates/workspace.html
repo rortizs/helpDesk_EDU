@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<section aria-labelledby="workspace-heading">
+  <div class="d-flex justify-content-between align-items-center mb-4"><div><h2 id="workspace-heading" class="h4 mb-1">HelpDesk EDU Dashboard</h2><p class="text-body-secondary mb-0">Operations workspace for active support work.</p></div><span class="badge text-bg-primary text-capitalize">{{ user.role }}</span></div>
+  <div class="row g-3">
+    <div class="col-md-6 col-xl-3"><article class="small-box text-bg-primary"><div class="inner"><h3>Queue</h3><p>Review open and in-progress tickets</p></div><a href="/tickets" class="small-box-footer">Open ticket queue <i class="fas fa-arrow-circle-right"></i></a></article></div>
+    <div class="col-md-6 col-xl-3"><article class="small-box text-bg-success"><div class="inner"><h3>Assignments</h3><p>Coordinate technician workload</p></div><a href="/tickets" class="small-box-footer">View assignments <i class="fas fa-arrow-circle-right"></i></a></article></div>
+    <div class="col-md-6 col-xl-3"><article class="small-box text-bg-warning"><div class="inner"><h3>Updates</h3><p>Track status and SLA attention</p></div><a href="/notifications" class="small-box-footer">Check notifications <i class="fas fa-arrow-circle-right"></i></a></article></div>
+    <div class="col-md-6 col-xl-3"><article class="small-box text-bg-info"><div class="inner"><h3>Knowledge</h3><p>Share verified support guidance</p></div><a href="/knowledge-base" class="small-box-footer">Browse knowledge base <i class="fas fa-arrow-circle-right"></i></a></article></div>
+  </div>
+</section>
+<section class="card mt-4"><div class="card-body"><h2 class="h5">Signed in as {{ user.name }}</h2><p class="mb-0 text-body-secondary">Use the queue to preserve the existing ticket workflow and its FastAPI authorization controls.</p></div></section>
+{% endblock %}

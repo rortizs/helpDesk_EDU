@@ -41,7 +41,7 @@ cp .env.example .env
 uv run uvicorn app.main:app --reload
 ```
 
-The default `DATABASE_URL=sqlite:///./helpdesk.db` creates the classroom SQLite database and deterministic demo users on startup. Browse the web UI at `http://127.0.0.1:8000/login`, Swagger UI at `http://127.0.0.1:8000/docs`, and OpenAPI JSON at `http://127.0.0.1:8000/openapi.json`.
+The default `DATABASE_URL=sqlite:///./helpdesk.db` creates the classroom SQLite database at `helpdesk.db`. On startup, the app seeds deterministic demo users only when the users table is empty, so an existing local database keeps its current users. Browse the public landing page at `http://127.0.0.1:8000/`, Swagger UI at `http://127.0.0.1:8000/docs`, and OpenAPI JSON at `http://127.0.0.1:8000/openapi.json`.
 
 ## Environment variables
 
@@ -61,6 +61,15 @@ docker compose up --build
 ```
 
 Compose starts the FastAPI application on `http://localhost:8000` and PostgreSQL 16. The application receives a PostgreSQL `DATABASE_URL` and creates/seed tables at startup for this classroom demonstration.
+
+## Demo access flow
+
+`/` is the public landing page for the web demo. Signing in at `/login` sends requester accounts to `/portal` for the customer experience and staff accounts to `/workspace` for the operations workspace.
+
+| Account type | Login result | Primary web area |
+|---|---|---|
+| Requester | Redirects to `/portal` | Open and track personal tickets. |
+| Administrator, supervisor, technician | Redirects to `/workspace` | Review the staff dashboard and ticket queue. |
 
 ## Demo users
 

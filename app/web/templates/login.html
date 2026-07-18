@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
-{% block content %}
-<h1>HelpDesk EDU login</h1>
-<p>Use one of the documented demo accounts to access the classroom dashboard.</p>
-{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-<form method="post" action="/login">
-  <label class="form-label" for="email">Email</label>
-  <input id="email" name="email" class="form-control" type="email" required>
-
-  <label class="form-label mt-2" for="password">Password</label>
-  <input id="password" name="password" class="form-control" type="password" required>
-
-  <button class="btn btn-primary mt-3" type="submit">Sign in</button>
-</form>
+{% block login_content %}
+<section class="card card-outline card-primary shadow-sm">
+  <div class="card-body login-card-body">
+    <h1 class="h3 text-center mb-2">HelpDesk EDU login</h1>
+    <p class="login-box-msg">Sign in with a technician, supervisor, or administrator account.</p>
+    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+    <form method="post" action="/login">
+      <div class="mb-3"><label class="form-label" for="email">Email</label><input id="email" name="email" class="form-control" type="email" required></div>
+      <div class="mb-3"><label class="form-label" for="password">Password</label><input id="password" name="password" class="form-control" type="password" required></div>
+      <button class="btn btn-primary w-100" type="submit">Sign in to workspace</button>
+    </form>
+  </div>
+</section>
 {% endblock %}

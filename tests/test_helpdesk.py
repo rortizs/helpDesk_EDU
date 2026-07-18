@@ -131,6 +131,31 @@ def test_customer_portal_and_staff_workspace_keep_separate_session_boundaries():
     assert "bootstrap@5" not in workspace.text
 
 
+def test_frontend_staff_ticket_queue_renders_requester_created_tickets():
+    c = client()
+    requester = login(c, "requester@example.com", "requester123")
+    c.post(
+        "/api/tickets",
+        headers=requester,
+        json={
+            "title": "Queue-visible requester ticket",
+            "description": "Staff should see requester-created work.",
+            "category": "Access",
+            "priority": "Critical",
+        },
+    )
+    c.post("/login", data={"email": "technician@example.com", "password": "technician123"})
+
+    response = c.get("/tickets")
+
+    assert response.status_code == 200
+    assert "Queue-visible requester ticket" in response.text
+    assert "Open" in response.text
+    assert "Critical" in response.text
+    assert "Requester" in response.text
+    assert "Unassigned" in response.text
+
+
 def test_frontend_ticket_form_creates_ticket_and_redirects_to_detail():
     c = client()
     c.post("/login", data={"email": "technician@example.com", "password": "technician123"})
@@ -171,6 +196,26 @@ def test_frontend_login_sets_cookie_and_dashboard_shows_current_user():
     assert dashboard.status_code == 200
     assert "Signed in as Admin" in dashboard.text
     assert "administrator" in dashboard.text
+
+
+def test_web_logout_clears_session_and_protected_pages_require_login():
+    customer = client()
+    customer.post("/login", data={"email": "requester@example.com", "password": "requester123"})
+    assert "Customer portal" in customer.get("/portal").text
+    assert 'action="/logout"' in customer.get("/portal").text
+
+    customer_logout = customer.post("/logout", follow_redirects=False)
+
+    assert customer_logout.status_code == 303
+    assert customer_logout.headers["location"] == "/"
+    assert "helpdesk_token=" in customer_logout.headers.get("set-cookie", "")
+    assert customer.get("/portal", follow_redirects=False).headers["location"] == "/login"
+
+    staff = client()
+    staff.post("/login", data={"email": "technician@example.com", "password": "technician123"})
+    assert 'action="/logout"' in staff.get("/workspace").text
+    assert staff.post("/logout", follow_redirects=False).headers["location"] == "/"
+    assert staff.get("/workspace", follow_redirects=False).headers["location"] == "/login"
 
 
 def test_dashboard_catalogs_and_web_pages():

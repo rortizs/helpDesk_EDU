@@ -67,6 +67,13 @@ def home(request: Request):
     return templates.TemplateResponse(request, "dashboard.html", {"title": "HelpDesk EDU", "user": _current_web_user(request)})
 
 
+@router.post("/logout")
+def logout():
+    response = RedirectResponse(url="/", status_code=303)
+    response.delete_cookie("helpdesk_token")
+    return response
+
+
 @router.get("/workspace", response_class=HTMLResponse)
 def workspace(request: Request):
     user = _staff_web_user(request)
@@ -128,7 +135,9 @@ def tickets_page(request: Request):
     user = _staff_web_user(request)
     if user is None:
         return _staff_login_redirect()
-    return templates.TemplateResponse(request, "tickets.html", {"title": "Tickets", "user": user})
+    with request.app.state.session_factory() as db:
+        tickets = TicketService(db).list(user, None, None, None)["items"]
+    return templates.TemplateResponse(request, "tickets.html", {"title": "Tickets", "user": user, "tickets": tickets})
 
 
 @router.get("/tickets/new", response_class=HTMLResponse)
